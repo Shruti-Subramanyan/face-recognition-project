@@ -13,13 +13,11 @@ if not os.path.exists(folder_name):
 # Path to the CSV file
 csv_file = os.path.join(folder_name, "camera_record.csv")
 
-# Initialize the webcam
 video_capture = cv2.VideoCapture(0)
 
-#image folder path
 path = 'C:\\Users\\shruti\\OneDrive\\Desktop\\shru\\images'
 
-# Load known faces and their names (example: add your own known faces here)
+# Load known faces and their names
 images = []
 known_face_names = []
 
@@ -30,8 +28,6 @@ for image in myImages:
     known_face_names.append(image.split('.')[0])
 
 def load_known_faces(images):
-    # Load known faces (you can load them from a directory or predefined list)
-    # Example:
     encodingList = []
     for image in images:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -39,9 +35,6 @@ def load_known_faces(images):
         encodingList.append(encoding)
 
     return encodingList
-    
-      # Replace with your code to load known faces
-
 
 def save_entry(name):
     with open(csv_file, 'a+', newline='') as file:
@@ -64,14 +57,12 @@ def entry_exists(name):
 
 encodeListKnown=load_known_faces(images)
 print("Encoding completed...")
-print("Starting video capture. Press 'q' to quit.")
 
 while True:
     ret, frame = video_capture.read()
     if not ret:
         continue
 
-    # Convert the image from BGR color (which OpenCV uses) to RGB color (which face_recognition uses)
     small_frame = cv2.resize(frame, (0, 0), None, 0.25, 0.25)
     rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
 
@@ -89,7 +80,7 @@ while True:
         matchIndex = np.argmin(faceDis)
         print(matchIndex)
         
-        # If a match was found in known_face_encodings, use the first one.
+        # If a match was found in known_face_encodings use the first one.
         if True in matches:
             first_match_index = matches.index(True)
             name = known_face_names[first_match_index]
@@ -108,13 +99,10 @@ while True:
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
         cv2.rectangle(frame, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv2.FILLED)
         cv2.putText(frame, name, (x1 + 6, y2 - 6), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
-    # Display the resulting image
+    
     cv2.imshow('Video', frame)
-
-    # Hit 'q' on the keyboard to quit
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Release the webcam and close windows
 video_capture.release()
 cv2.destroyAllWindows()
