@@ -12,8 +12,8 @@ if not os.path.exists(folder_name):
 
 # Path to the CSV file
 csv_file = os.path.join(folder_name, "camera_record.csv")
-
-video_capture = cv2.VideoCapture(0)
+#video path
+video_capture = cv2.VideoCapture("video_path.mp4")
 
 path = 'C:\\Users\\shruti\\OneDrive\\Desktop\\shru\\images'
 
@@ -80,7 +80,7 @@ while True:
         matchIndex = np.argmin(faceDis)
         print(matchIndex)
         
-        # If a match was found in known_face_encodings use the first one.
+        # If a match was found in known_face_encodings 
         if True in matches:
             first_match_index = matches.index(True)
             name = known_face_names[first_match_index]
