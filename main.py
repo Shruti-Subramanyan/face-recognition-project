@@ -1,107 +1,105 @@
-import os
 import cv2
 import face_recognition
-import numpy as np
-from datetime import datetime
+import os
 import csv
+from datetime import datetime, timedelta
+import numpy as np
 
-# Create a folder to save images if it doesn't exist
-folder_name = "captured_images"
-if not os.path.exists(folder_name):
-    os.makedirs(folder_name)
+# Function to load images and encode them
+def loadEncodeImages(images_folder):
+    images = []
+    id = []
+    for image_name in os.listdir(images_folder):
+        if image_name.endswith(".jpg") or image_name.endswith(".png"):
+            image_path = os.path.join(images_folder, image_name)
+            image = face_recognition.load_image_file(image_path)
+            image_encoding = face_recognition.face_encodings(image)[0]
+            images.append(image_encoding)
+            id.append(image_name.split('.')[0])
+    return images, id
 
-# Path to the CSV file
-csv_file = os.path.join(folder_name, "camera_record.csv")
-#video path
-video_capture = cv2.VideoCapture("video_path.mp4")
-
-path = 'C:\\Users\\shruti\\OneDrive\\Desktop\\shru\\images'
-
-# Load known faces and their names
-images = []
-known_face_names = []
-
-myImages = os.listdir(path)
-for image in myImages:
-    currentImage = cv2.imread(f'{path}/{image}')
-    images.append(currentImage)
-    known_face_names.append(image.split('.')[0])
-
-def load_known_faces(images):
-    encodingList = []
-    for image in images:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        encoding = face_recognition.face_encodings(image)[0]
-        encodingList.append(encoding)
-
-    return encodingList
-
-def save_entry(name):
-    with open(csv_file, 'a+', newline='') as file:
-        writer = csv.writer(file)
-        now = datetime.now()
-        date_now =now.strftime('%Y-%m-%d' )
-        dtString =now.strftime('%H:%M:%S')
-        writer.writerow([name, date_now, dtString])
-
-# before storing data check if it exists or not
-def entry_exists(name):
-    if not os.path.exists(csv_file):
-        return False
-    with open(csv_file, 'r') as file:
-        reader = csv.reader(file)
+# Function to check if ID exists in employees record
+def check_employee_id(employee_id, employees_record_file):
+    with open(employees_record_file, mode='r') as file:
+        reader = csv.DictReader(file)
         for row in reader:
-            if row[0] == name:
-                return True
-    return False
+            if row['id'] == employee_id:
+                return row['name']
+    return None
 
-encodeListKnown=load_known_faces(images)
-print("Encoding completed...")
+# Function to input data in a CSV file
+def enter_data(csv_file, data):
+    file_exists = os.path.isfile(csv_file)
+    with open(csv_file, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        if not file_exists:
+            writer.writerow(['id', 'name', 'time', 'date'])
+        writer.writerow(data)
+
+# Required folders
+images_folder = 'images'
+employees_record_file = 'employees_record.csv'
+camera_record_file = 'camera_record.csv'
+known_face_encodings, known_face_ids = loadEncodeImages(images_folder)
+
+
+video_capture = cv2.VideoCapture('C:/Users/shruti/OneDrive/Desktop/shru/videos/they_video.mp4')
+
+# To store last recorded time for each person
+last_recorded_times = {}
+
+# Minimum time difference threshold (in seconds)
+min_time_threshold = 60  
 
 while True:
     ret, frame = video_capture.read()
-    if not ret:
-        continue
-
     small_frame = cv2.resize(frame, (0, 0), None, 0.25, 0.25)
     rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
-
-    # Find all the faces and face encodings in the current frame of video
     face_locations = face_recognition.face_locations(rgb_frame)
     face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-    for encodeFace, faceLoc in zip(face_encodings, face_locations):
-        # See if the face is a match for any known face(s)
-        matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
-        print(matches)
-        name="unknown"
-        faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
-        print(faceDis)
-        matchIndex = np.argmin(faceDis)
-        print(matchIndex)
-        
-        # If a match was found in known_face_encodings 
+    for face_encoding in face_encodings:
+        matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+        name = "Unknown"
+        employee_id = None
+
         if True in matches:
             first_match_index = matches.index(True)
-            name = known_face_names[first_match_index]
+            employee_id = known_face_ids[first_match_index]
+            name = check_employee_id(employee_id, employees_record_file)
+            
+            # Check last recorded time for this person
+            if employee_id in last_recorded_times:
+                last_recorded_time = last_recorded_times[employee_id]
+                elapsed_time = datetime.now() - last_recorded_time
+                if elapsed_time.total_seconds() < min_time_threshold:
+                    continue
 
-        # Check if the entry already exists to avoid duplicates
-        if name != "Unknown" and not entry_exists(name):
-            # Save the image
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            image_path = os.path.join(folder_name, f"{name}_{timestamp}.jpg")
-            cv2.imwrite(image_path, frame)
+            # Update last recorded time for this person
+            last_recorded_times[employee_id] = datetime.now()
 
-            # Save the entry in the CSV file
-            save_entry(name)
-        y1, x2, y2, x1 = faceLoc
-        y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.rectangle(frame, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv2.FILLED)
-        cv2.putText(frame, name, (x1 + 6, y2 - 6), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
-    
+        else:
+            employee_id = str(len(known_face_ids) + 1)
+            known_face_encodings.append(face_encoding)
+            known_face_ids.append(employee_id)
+
+            new_image_path = os.path.join(images_folder, f"{employee_id}.jpg")
+            cv2.imwrite(new_image_path, frame)
+            with open(employees_record_file, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([employee_id, "Unknown"])
+            
+            # No match found, assign new ID and record the time
+            last_recorded_times[employee_id] = datetime.now()
+            
+
+        now = datetime.now()
+        time_string = now.strftime("%H:%M:%S")
+        date_string = now.strftime("%Y-%m-%d")
+        enter_data(camera_record_file, [employee_id, name, time_string, date_string])
+
     cv2.imshow('Video', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord('s'):
         break
 
 video_capture.release()
