@@ -43,18 +43,20 @@ camera_record_file = 'camera_record.csv'
 known_face_encodings, known_face_ids = loadEncodeImages(images_folder)
 
 
-video_capture = cv2.VideoCapture('C:/Users/shruti/OneDrive/Desktop/shru/videos/they_video.mp4')
+video_capture = cv2.VideoCapture('C:\\Users\\shruti\\OneDrive\\Desktop\\shru\\videos\\ankur_video.mp4')
 
 # To store last recorded time for each person
 last_recorded_times = {}
 
 # Minimum time difference threshold (in seconds)
-min_time_threshold = 60  
+min_time_threshold = 30 
 
 while True:
     ret, frame = video_capture.read()
-    small_frame = cv2.resize(frame, (0, 0), None, 0.25, 0.25)
-    rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+    if not ret:
+        break  # Exit loop if no frame is read (end of video)
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
     face_locations = face_recognition.face_locations(rgb_frame)
     face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
@@ -104,3 +106,4 @@ while True:
 
 video_capture.release()
 cv2.destroyAllWindows()
+
